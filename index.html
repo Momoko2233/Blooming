@@ -15,7 +15,7 @@
             --mono:'JetBrains Mono',monospace;
         }
         *{margin:0;padding:0;box-sizing:border-box}
-        body{background:#000;color:var(--text);font-family:var(--serif);overflow:hidden;cursor:none}
+        body{background:#000;color:var(--text);font-family:var(--serif);overflow:hidden;cursor:none} /* cursor:none 隐藏系统光标 */
         
         /* ===== 视频容器 (居中内嵌) ===== */
         #video-wrapper {
@@ -28,7 +28,7 @@
             justify-content: center;
             align-items: center;
             background: #000;
-            z-index: 1;
+            z-index: 1; /* 确保视频容器在加载层之下 */
             opacity: 0; /* 初始隐藏，加载完后淡入 */
             transition: opacity 1s ease;
         }
@@ -45,7 +45,7 @@
 
         /* ===== 加载动画层 ===== */
         .loader{
-            position:fixed;inset:0;background:#000;z-index:10000;
+            position:fixed;inset:0;background:#000;z-index:10000; /* Z-index 很高，确保在最顶层 */
             display:flex;flex-direction:column;align-items:center;justify-content:center;
             transition:transform 1.2s cubic-bezier(.77,0,.175,1);
         }
@@ -83,8 +83,17 @@
 	.loader-progress{position:absolute;top:0;left:0;height:100%;width:0;background:#FF0040;transition:width .3s ease}
 	.loader-count{font-family:var(--mono);font-size:.7rem;color:#FF0040;margin-top:1rem;letter-spacing:.2em}
 
-        /* ===== 自定义光标 ===== */
-        .cursor-dot,.cursor-outline{position:fixed;top:0;left:0;pointer-events:none;border-radius:50%;z-index:9999;transform:translate(-50%,-50%)}
+        /* ===== 自定义光标 (提升层级) ===== */
+        .cursor-dot,.cursor-outline{
+            position:fixed;
+            top:0;
+            left:0;
+            pointer-events:none; /* 关键：允许鼠标事件穿透，不影响下方元素 */
+            border-radius:50%;
+            /* 提升 Z-index，确保光标在 iframe 之上 */
+            z-index: 99999 !important; /* 使用 !important 确保层级最高 */
+            transform:translate(-50%,-50%)
+        }
         .cursor-dot{width:6px;height:6px;background:#fff}
         .cursor-outline{width:40px;height:40px;border:1px solid rgba(250,250,250,.3);transition:width .35s ease,height .35s ease,border-color .35s ease}
     </style>
@@ -93,11 +102,11 @@
 
     <!-- 1. 视频容器 (内嵌播放器) -->
     <div id="video-wrapper">
-        <!-- 直接插入你从 YouTube 复制的 iframe 代码 -->
+        <!-- 更新后的 iframe 代码 (controls=0) -->
         <iframe 
             width="560" 
             height="315" 
-            src="https://www.youtube.com/embed/n-Dnlme-jlE?si=Kmc0E6sek0c8HIKz" 
+            src="https://www.youtube.com/embed/n-Dnlme-jlE?si=Kmc0E6sek0c8HIKz&controls=0" 
             title="YouTube video player" 
             frameborder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
@@ -116,7 +125,7 @@
         <div class="loader-count">0%</div>
     </div>
 
-    <!-- 3. 自定义光标 -->
+    <!-- 3. 自定义光标 (移至 body 结束前，确保 DOM 加载后执行) -->
     <div class="cursor-dot"></div>
     <div class="cursor-outline"></div>
 
@@ -175,11 +184,28 @@
         const cursorOutline = document.querySelector('.cursor-outline');
 
         window.addEventListener('mousemove', (e) => {
+            // 获取鼠标位置
             const posX = e.clientX;
             const posY = e.clientY;
+
+            // 立即更新小圆点位置
             cursorDot.style.left = `${posX}px`;
             cursorDot.style.top = `${posY}px`;
-            cursorOutline.animate({ left: `${posX}px`, top: `${posY}px` }, { duration: 500, fill: "forwards" });
+
+            // 使用 animate API 平滑移动大圆环
+            // 注意：animate 会覆盖之前的 transform，所以需要在这里重新计算中心偏移
+            cursorOutline.animate(
+                [
+                    { 
+                      transform: `translate(${posX - 20}px, ${posY - 20}px)` // 减去一半的宽高 (40/2) 以实现中心对齐
+                    }
+                ], 
+                { 
+                    duration: 500, 
+                    fill: "forwards",
+                    easing: "ease-out"
+                }
+            );
         });
     </script>
 </body>
